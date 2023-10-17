@@ -10,10 +10,11 @@ General MonkeyPod Documentation: https://monkeypod.helpscoutdocs.com/category/13
 
 
 **********************************
-Using the library
+Using the command line client
 **********************************
 
 ::
+
     $ export MONKEYPOD_API="https://[institution].monkeypod.io/api/v2/"
     $ export MONKEYPOD_TOKEN="..."
 
