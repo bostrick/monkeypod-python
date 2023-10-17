@@ -1,0 +1,28 @@
+address: 123 Main Street
+aliases:
+- Jane the Great
+city: Anytown
+country: United States
+email: jane.q.smith@example.com
+extra_attributes:
+  alma-mater: Stanford University
+  favorite-color: blue
+first_name: Jane
+honorific: Ms.
+last_name: Smith 2
+middle_name: Q.
+organization_name: Jane's Awesome Business
+phones:
+- number: 888-555-1212
+  type: Home
+- number: 999-666-2323
+  type: Cell
+postal_code: 99999-9999
+pronouns: she/her/they
+roles:
+- Customer
+- Donor
+state: CA
+title: CEO
+type: Individual
+website: https://example.com

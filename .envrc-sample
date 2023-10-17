@@ -1,0 +1,6 @@
+# useful for users of https://direnv.net/
+
+layout python python3
+
+export MONKEYPOD_API="https://_SET_INSTITUTION_HERE_.monkeypod.io/api/v2/"
+export MONKEYPOD_TOKEN="..."

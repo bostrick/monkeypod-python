@@ -1,0 +1,57 @@
+hide
+
+# Backup files
+*.~
+
+# vim swap files
+.*.sw[po]
+.ipynb_checkpoints
+
+RCS
+htmlcov
+reports
+tags
+
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+venv_*
+.envrc
+.direnv
+
+# C extensions
+*.so
+
+# Distribution / packaging
+bin/
+build/
+develop-eggs/
+dist/
+eggs/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+.tox/
+.pytest_cache
+.coverage
+.cache
+nosetests.xml
+coverage.xml
+
+# Translations
+*.mo
+
+# Sphinx documentation
+docs/_build/
