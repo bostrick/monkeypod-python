@@ -115,9 +115,11 @@ class MonkeyPodClient:
         if metadata:
             q['metadata'] = metadata
         qstr = urllib.parse.urlencode(q)
-        response =  self.session.get(self._u(f"entities/match?{qstr}"))
+        response = self.session.get(self._u(f"entities/match?{qstr}"))
         response.raise_for_status()
-        return response.json()
+        payload = response.json()
+        data = payload.get("data")
+        return data
 
     def _get_unique_item(self, items):
 

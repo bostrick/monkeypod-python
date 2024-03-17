@@ -22,18 +22,21 @@ __author__ = 'Bowe Strickland <bowe@yak.net>'
 __docformat__ = 'restructuredtext'
 
 import logging
+import csv
 
 import click
 import yaml
 
 from .client import MonkeyPodClient
+from .manager import MonkeyPodManager
 
 LOG = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
+
 @click.group()
 @click.option(
-    "-a", "--api", 
+    "-a", "--api",
     help="URL in form https://[institution].monkeypod.io/api/v2"
 )
 @click.option(
@@ -48,15 +51,18 @@ def monkeypod(ctx, **kw):
         MONKEYPOD_API="https://[institution].monkeypod.io/api/v2/"
         MONKEYPOD_TOKEN="..."
     """
-    kw = {k:v for k,v in kw.items() if v}
+    kw = {k: v for k, v in kw.items() if v}
     ctx.client = MonkeyPodClient(**kw)
+    ctx.manager = MonkeyPodManager(ctx.client)
     LOG.info("using %s" % ctx.client)
+
 
 @monkeypod.group(name="entity")
 @click.pass_context
 def entity(ctx):
     """Manage Entities"""
     pass
+
 
 @entity.command(name="create")
 @click.option("-f", "--yaml-filename", type=click.File(), required=True)
@@ -67,6 +73,7 @@ def entity_create(ctx, yaml_filename):
     c = ctx.parent.parent.client
     click.echo(yaml.safe_dump(c.entity_create(data)))
 
+
 @entity.command(name="match")
 @click.option("-i", "--id")
 @click.option("-n", "--name")
@@ -75,18 +82,43 @@ def entity_create(ctx, yaml_filename):
 @click.pass_context
 def entity_match(ctx, **kw):
     """Search for matching entities"""
-    kw = {k:v for k,v in kw.items() if v}
+    kw = {k: v for k, v in kw.items() if v}
     c = ctx.parent.parent.client
     click.echo(yaml.safe_dump(c.entity_match(**kw)))
+
 
 @entity.command(name="delete")
 @click.option("-i", "--id")
 @click.option("-e", "--email")
 @click.pass_context
-def entity_match(ctx, id, email):
+def entitydelete(ctx, id, email):
     """Delete an entry by id or matching email"""
     assert id or email, "either id or email is required"
     assert not (id and email), "only one of id or email is accepted"
     c = ctx.parent.parent.client
     click.echo(yaml.safe_dump(c.entity_delete(id=id, email=email)))
 
+
+@entity.command(name="import-csv")
+@click.option("-f", "--csv-filename", type=click.File())
+@click.option("-h", "--headers-yaml", type=click.File())
+@click.option("-s", "--source-attr")
+@click.option("-i", "--import-attr")
+@click.pass_context
+def import_csv(ctx, csv_filename, headers_yaml, source_attr, import_attr):
+
+    reader = csv.DictReader(csv_filename)
+    entities = list(reader)
+
+    attr_map = None
+    if headers_yaml:
+        attr_map = yaml.safe_load(headers_yaml.read())
+
+    mgr = ctx.parent.parent.manager
+    result = mgr.import_entities(
+        entities,
+        attr_map,
+        source_attr,
+        import_attr,
+    )
+    click.echo(yaml.safe_dump(result))

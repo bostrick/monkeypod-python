@@ -1,0 +1,9 @@
+# entity import attrs for stripe "Export Customers All Columns"
+Email: email
+Name: name
+Card Address City: city
+Card Address Country: country
+Card Address Line1: address
+Card Address Line2: address2
+Card Address State: state
+Card Address Zip: postal_code

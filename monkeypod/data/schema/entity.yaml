@@ -1,0 +1,102 @@
+$schema: https://json-schema.org/draft/2020-12/schema
+$id: https://example.com/product.schema.json
+
+title: MonkeyPod Entity
+type: object
+
+$defs:
+  phone:
+    properties:
+      number:
+        type: string
+        example: 888-555-1212
+      type:
+        type: string
+        enum:
+        - Home
+
+properties:
+
+  type:
+    type: string
+    example: Individual
+    enum:
+    - Individual
+    - Organization
+    - Foundation
+    - Corporate
+    - Government
+    - Other
+
+  first_name:
+    type: string
+    example: Jane
+
+  honorific:
+    type: string
+    example: Ms.
+
+  last_name:
+    type: string
+    example: Smith 2
+
+  middle_name:
+    type: string
+    example: Q.
+
+  organization_name:
+    type: string
+    example: Jane's Awesome Business
+
+  email:
+    type: string
+    example: jane.q.smith@example.com
+
+  pronouns:
+    example: she/her/they
+
+  roles:
+  - Customer
+  - Donor
+
+  address:
+    type: string
+    exmaple: 123 Main Street
+
+  aliases:
+    type: array
+    item:
+      type: string
+
+  city:
+    type: string
+    example: Anytown
+
+  country:
+    type: string
+    example: United States
+
+  extra_attributes:
+    type: object
+    additionalAttributes: string
+
+  phones:
+    type: array
+    items:
+      $ref: "#/$defs/phone"
+
+  postal_code:
+    example: 99999-9999
+    type: string
+
+  state:
+    example: CA
+    type: string
+
+  title:
+    example: CEO
+    type: string
+
+  website:
+    example: https://example.com
+    type: string
