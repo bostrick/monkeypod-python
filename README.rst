@@ -88,3 +88,8 @@ Entitiies:
     - POST: contrary to the example, and id does not need to be provided
       on create, it will be generated and returned from the servrer
 
+Server Side Normalizations:
+
+    'name' attr will be broken up into Frist Name, Last Name, ....
+    'email' will be lowercased
+
