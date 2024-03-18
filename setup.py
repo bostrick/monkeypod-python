@@ -16,7 +16,7 @@ requires = [
     'pyyaml',
     'attrs',
 #    'pydash',
-#    'arrow',
+    'arrow',
 ]
 
 setup(

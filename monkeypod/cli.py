@@ -98,6 +98,19 @@ def entitydelete(ctx, id, email):
     c = ctx.parent.parent.client
     click.echo(yaml.safe_dump(c.entity_delete(id=id, email=email)))
 
+#######################################################################
+# imports
+#######################################################################
+
+
+def _ingest_csv_file(fd):
+
+    def _filter_row(data):
+        return {k: v for k, v in data.items() if v}
+
+    reader = csv.DictReader(fd)
+    return [_filter_row(r) for r in reader]
+
 
 @entity.command(name="import-csv")
 @click.option("-f", "--csv-filename", type=click.File())
@@ -107,8 +120,7 @@ def entitydelete(ctx, id, email):
 @click.pass_context
 def import_csv(ctx, csv_filename, headers_yaml, source_attr, import_attr):
 
-    reader = csv.DictReader(csv_filename)
-    entities = list(reader)
+    entities = _ingest_csv_file(csv_filename)
 
     attr_map = None
     if headers_yaml:
@@ -121,4 +133,22 @@ def import_csv(ctx, csv_filename, headers_yaml, source_attr, import_attr):
         source_attr,
         import_attr,
     )
+    click.echo(yaml.safe_dump(result))
+
+
+@monkeypod.group(name="transaction")
+@click.pass_context
+def transaction(ctx):
+    """Manage Transactions"""
+    pass
+
+
+@transaction.command(name="import-stripe-transactions")
+@click.option("-f", "--csv-filename", type=click.File())
+@click.pass_context
+def import_stripe_transactions(ctx, csv_filename):
+
+    rows = _ingest_csv_file(csv_filename)
+    mgr = ctx.parent.parent.manager
+    result = mgr.gen_stripe_imports(rows)
     click.echo(yaml.safe_dump(result))

@@ -20,16 +20,29 @@ __author__ = 'Bowe Strickland <bowe@ryak.net>'
 __docformat__ = 'restructuredtext'
 
 import logging
+import csv
+from pathlib import Path
+from functools import cached_property
 
 import attr
+import arrow
+import yaml
 
 LOG = logging.getLogger(__name__)
+
+HERE = Path(__file__)
 
 
 @attr.s
 class MonkeyPodManager:
 
     client = attr.ib()
+
+    import_path = HERE / "data/imports/monkey_pod_columns.yaml"
+
+    @cached_property
+    def import_column_map(self):
+        return yaml.safe_load(self.import_path.read_text())
 
     def _extract_data(self, item, attr_map):
         # forces all entries to strings
@@ -83,3 +96,42 @@ class MonkeyPodManager:
             nadded += 1
 
         return nadded
+
+    def gen_stripe_imports(self, rows):
+        self._gen_stripe_transfer_csv(rows)
+        return
+
+    def _gen_stripe_transfer_csv(self, rows, tag=None):
+
+        def _gen_row(data):
+            return {
+                'Date': arrow.get(data["Created (UTC)"]).format("YYYY-MM-DD"),
+                'Amount': -float(data["Net"]),
+                'From Account': "Stripe Account",
+                'To Account': "Wells Fargo - Main 1582",
+                'External ID': data["id"],
+                'Ref Number': data["id"],
+                'Memo': data["Description"],
+            }
+
+        fields = [
+            "Date",
+            "Amount",
+            "From Account",
+            "To Account",
+            "External ID",
+            "Ref Number",
+            "Memo",
+        ]
+
+        payouts = [r for r in rows if r['Type'] == 'payout']
+
+        tag = tag or arrow.utcnow().format("YYYYMMDD")
+        fname = f"stripe_transfers_{tag}.csv"
+        LOG.info(f"writing {len(payouts)} transfers to {fname}")
+        with open(fname, "w") as f:
+            writer = csv.DictWriter(f, fieldnames=fields)
+            writer.writeheader()
+            [writer.writerow(_gen_row(r)) for r in payouts]
+
+        return fname

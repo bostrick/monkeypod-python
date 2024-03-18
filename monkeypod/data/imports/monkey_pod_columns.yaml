@@ -1,0 +1,9 @@
+# column headers for MonkeyPod CSV's
+transfer:
+- Date
+- Amount
+- From Account
+- To Account
+- External ID
+- Ref Number
+- Memo
