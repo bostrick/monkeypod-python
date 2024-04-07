@@ -15,8 +15,10 @@ requires = [
     'click',
     'pyyaml',
     'attrs',
-#    'pydash',
+    'pydash',
     'arrow',
+    'stripe',
+    'python-datemath',
 ]
 
 setup(

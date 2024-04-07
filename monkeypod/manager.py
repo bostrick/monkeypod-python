@@ -20,6 +20,7 @@ __author__ = 'Bowe Strickland <bowe@ryak.net>'
 __docformat__ = 'restructuredtext'
 
 import logging
+import collections
 import csv
 from pathlib import Path
 from functools import cached_property
@@ -97,18 +98,116 @@ class MonkeyPodManager:
 
         return nadded
 
-    def gen_stripe_imports(self, rows):
-        self._gen_stripe_transfer_csv(rows)
-        return
+    #####################################################################
+    # stripe imports
+    #####################################################################
 
-    def _gen_stripe_transfer_csv(self, rows, tag=None):
+    def gen_stripe_imports(self, rows, tag=None):
+
+        tag = tag or arrow.utcnow().format("YYYYMMDD")
+
+        # filter out empty rows
+        try:
+            rows = [r for r in rows if "Description" in r]
+        except Exception:
+            breakpoint()
+
+        # assign row numbers and normalize
+        for idx, r in enumerate(rows):
+            r["_row_number"] = idx
+            self._normalize_row(r)
+
+        # qualify the transactions
+        parts = self._partition_rows(rows)
+
+        # process transactions
+        self._report_unknown(parts["unknown"])
+        self._gen_stripe_donations_csv(parts["donations"], tag)
+        self._gen_stripe_transfers_csv(parts["transfers"], tag)
+        self._gen_stripe_sales_csv(parts["charges"], tag)
+        self._gen_stripe_fees_csv(rows, tag)
+
+    def _normalize_row(self, row):
+        row["Amount"] = row["Amount"].replace(",", "")
+        row["Fee"] = row["Fee"].replace(",", "")
+        if not row.get("email", "").strip():
+            email = row["Description"].split()[-1]
+            if "@" in email:
+                row["email"] = email
+
+    def _partition_rows(self, rows):
+
+        results = collections.defaultdict(list)
+        for row in rows:
+            desc = row["Description"]
+            if "PAYOUT" in desc:
+                results["transfers"].append(row)
+            elif desc.startswith("Donation by"):
+                results["donations"].append(row)
+            elif desc.startswith("Charge for"):
+                results["charges"].append(row)
+            elif desc.startswith("Invoice"):
+                results["invoices"].append(row)
+            else:
+                results["unknown"].append(row)
+
+        counts = {k: len(v) for k, v in results.items()}
+        LOG.info(f"read transactions: {counts}")
+        return results
+
+    def _report_unknown(self, rows):
+        for r in rows:
+            LOG.warning(f"unknown transaction: {r}")
+
+    def _gen_stripe_donations_csv(self, rows, tag):
+
+        def _gen_row(data):
+
+            return {
+                'Date': arrow.get(data["Created (UTC)"]).format("YYYY-MM-DD"),
+                'Donor': data["email"],
+                'Amount': data["Amount"],
+                'Income Account': "Contributions",
+                'Asset Account': "Stripe Account",
+                'External ID': data["id"],
+                'Ref Number': data["id"],
+                'Payment Method': "Other",
+                'Memo': data.get("memo", ""),
+                'Class': data.get("class", ""),
+                'Tags': data.get("tags", ""),
+            }
+
+        fields = [
+            'Date',
+            'Donor',
+            'Amount',
+            'Income Account',
+            'Asset Account',
+            'External ID',
+            'Ref Number',
+            'Payment Method',
+            'Memo',
+            'Class',
+            'Tags',
+        ]
+
+        fname = f"stripe_donations_{tag}.csv"
+        LOG.info(f"writing {len(rows)} donations to {fname}")
+        with open(fname, "w") as f:
+            writer = csv.DictWriter(f, fieldnames=fields)
+            writer.writeheader()
+            [writer.writerow(_gen_row(r)) for r in rows]
+
+        return fname
+
+    def _gen_stripe_transfers_csv(self, rows, tag):
 
         def _gen_row(data):
             return {
                 'Date': arrow.get(data["Created (UTC)"]).format("YYYY-MM-DD"),
-                'Amount': -float(data["Net"]),
-                'From Account': "Stripe Account",
-                'To Account': "Wells Fargo - Main 1582",
+                'Amount': -float(data["Amount"]),
+                'To Account': "Stripe Account",
+                'From Account': "Wells Fargo - Main 1582",
                 'External ID': data["id"],
                 'Ref Number': data["id"],
                 'Memo': data["Description"],
@@ -124,14 +223,92 @@ class MonkeyPodManager:
             "Memo",
         ]
 
-        payouts = [r for r in rows if r['Type'] == 'payout']
-
-        tag = tag or arrow.utcnow().format("YYYYMMDD")
         fname = f"stripe_transfers_{tag}.csv"
-        LOG.info(f"writing {len(payouts)} transfers to {fname}")
+        LOG.info(f"writing {len(rows)} transfers to {fname}")
         with open(fname, "w") as f:
             writer = csv.DictWriter(f, fieldnames=fields)
             writer.writeheader()
-            [writer.writerow(_gen_row(r)) for r in payouts]
+            [writer.writerow(_gen_row(r)) for r in rows]
 
         return fname
+
+    def _gen_stripe_sales_csv(self, rows, tag):
+
+        def _gen_row(data):
+
+            return {
+                'Date': arrow.get(data["Created (UTC)"]).format("YYYY-MM-DD"),
+                'Customer': data["email"],
+                'Total': data["Amount"],
+                'Item': data["item"],
+                'Quantity': data["quantity"],
+                'Asset Account': "Stripe Account",
+                'External ID': data["id"],
+                'Payment Method': "Other",
+                'Memo': data.get("memo", ""),
+                'Class': data.get("class", ""),
+                'Tags': data.get("tags", ""),
+            }
+
+        fields = [
+            'Date',
+            'Customer',
+            'Total',
+            'Item',
+            'Quantity',
+            'Asset Account',
+            'External ID',
+            'Payment Method',
+            'Memo',
+            'Class',
+            'Tags',
+        ]
+
+        fname = f"stripe_sales_{tag}.csv"
+        LOG.info(f"writing {len(rows)} sales to {fname}")
+        with open(fname, "w") as f:
+            writer = csv.DictWriter(f, fieldnames=fields)
+            writer.writeheader()
+            [writer.writerow(_gen_row(r)) for r in rows]
+
+        return fname
+
+    def _gen_stripe_fees_csv(self, rows, tag):
+
+        transactions = collections.defaultdict(list)
+        for r in rows:
+            when = arrow.get(r["Created (UTC)"])
+            bucket = when.format("YYYY-MM")
+            transactions[bucket].append(float(r["Fee"]))
+
+        data = []
+        for k in sorted(transactions):
+            data.append({
+                'Payee': "stripe",
+                'Date': f"{k}-28",
+                'Amount': sum(transactions[k]),
+                'Expense Account': "Bank Fees",
+                'Checking Account': "Stripe Account",
+                'Ref Number': f"calculated stripe_fees_{k}",
+                'External ID': f"calculated stripe_fees_{k}",
+            })
+
+        fields = [
+            'Payee',
+            'Date',
+            'Amount',
+            'Expense Account',
+            'Checking Account',
+            'Ref Number',
+            'External ID',
+        ]
+
+        fname = f"stripe_fees_{tag}.csv"
+        LOG.info(f"writing {len(data)} fees to {fname}")
+        with open(fname, "w") as f:
+            writer = csv.DictWriter(f, fieldnames=fields)
+            writer.writeheader()
+            [writer.writerow(d) for d in data]
+
+        return fname
+

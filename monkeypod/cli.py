@@ -29,6 +29,7 @@ import yaml
 
 from .client import MonkeyPodClient
 from .manager import MonkeyPodManager
+from .stripe_client import StripeClient
 
 LOG = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -152,3 +153,25 @@ def import_stripe_transactions(ctx, csv_filename):
     mgr = ctx.parent.parent.manager
     result = mgr.gen_stripe_imports(rows)
     click.echo(yaml.safe_dump(result))
+
+
+@monkeypod.group(name="stripe")
+@click.pass_context
+def stripe(ctx):
+    ctx.stripe = StripeClient()
+
+
+@stripe.command(name="customers")
+@click.pass_context
+def stripecustomers(ctx):
+    c = ctx.parent.stripe
+    print(c.get_customers())
+
+
+@stripe.command(name="transactions")
+@click.option("-w", "--when", default="now-1M/M:now-1M/M")
+@click.pass_context
+def stripe_transactions(ctx, when):
+    c = ctx.parent.stripe
+    for obj in c.balance_transaction_iter(when):
+        print("---\n" + yaml.safe_dump(obj))
