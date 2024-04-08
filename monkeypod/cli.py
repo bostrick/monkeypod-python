@@ -146,13 +146,25 @@ def transaction(ctx):
 
 @transaction.command(name="import-stripe-transactions")
 @click.option("-f", "--csv-filename", type=click.File())
+@click.option("-y", "--yaml-filename", type=click.File())
+@click.option("-c", "--confirm-entities", is_flag=True)
 @click.pass_context
-def import_stripe_transactions(ctx, csv_filename):
+def import_stripe_transactions(
+    ctx, csv_filename, yaml_filename, confirm_entities
+):
 
-    rows = _ingest_csv_file(csv_filename)
-    mgr = ctx.parent.parent.manager
-    result = mgr.gen_stripe_imports(rows)
-    click.echo(yaml.safe_dump(result))
+    if csv_filename:
+        rows = _ingest_csv_file(csv_filename)
+        mgr = ctx.parent.parent.manager
+        result = mgr.gen_stripe_imports(rows)
+        click.echo(yaml.safe_dump(result))
+
+    elif yaml_filename:
+        recs = yaml.safe_load_all(yaml_filename.read())
+        mgr = ctx.parent.parent.manager
+        result = mgr.gen_stripe_imports_from_recs(
+            recs, confirm_entities=confirm_entities,
+        )
 
 
 @monkeypod.group(name="stripe")
@@ -162,10 +174,12 @@ def stripe(ctx):
 
 
 @stripe.command(name="customers")
+@click.option("-w", "--when", default="now-1M/M:now-1M/M")
 @click.pass_context
-def stripecustomers(ctx):
+def stripecustomers(ctx, when):
     c = ctx.parent.stripe
-    print(c.get_customers())
+    for obj in c.customer_iter(when):
+        print("---\n" + yaml.safe_dump(obj))
 
 
 @stripe.command(name="transactions")
@@ -175,3 +189,17 @@ def stripe_transactions(ctx, when):
     c = ctx.parent.stripe
     for obj in c.balance_transaction_iter(when):
         print("---\n" + yaml.safe_dump(obj))
+
+
+@stripe.group(name="charge")
+@click.pass_context
+def stripe_charge(ctx):
+    pass
+
+
+@stripe_charge.command(name="get")
+@click.argument("charge_id")
+@click.pass_context
+def stripe_charge(ctx, charge_id):
+    c = ctx.parent.parent.stripe
+    print(yaml.safe_dump(c.get_charge(charge_id)))
