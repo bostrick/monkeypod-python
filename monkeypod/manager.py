@@ -22,6 +22,7 @@ __docformat__ = 'restructuredtext'
 import logging
 import collections
 import csv
+import re
 from pathlib import Path
 from functools import cached_property
 
@@ -371,6 +372,10 @@ class MonkeyPodManager:
 
         return fname
 
+    #####################################################3
+    # legacy stripe import from csv
+    #####################################################3
+
     def gen_stripe_imports(self, rows, tag=None):
 
         tag = tag or arrow.utcnow().format("YYYYMMDD")
@@ -580,3 +585,97 @@ class MonkeyPodManager:
             [writer.writerow(d) for d in data]
 
         return fname
+
+    #############################################
+    # Quickbooks Importing
+    #############################################
+
+    qb_import_map = yaml.safe_load("""
+      sale:
+        paths:
+          Date: Date
+          Total: Amount
+          External ID: Trans ID
+          Memo: Batch ID
+          Customer: Cardholder Name
+        constants:
+          Asset Account: Wells Fargo - Main 1582
+          Payment Method: Other
+          Item: Community Class
+          Class: Community Classes
+        fields:
+        - Date
+        - Customer
+        - Total
+        - Item
+        - Asset Account
+        - External ID
+        - Payment Method
+        - Memo
+        - Class
+        - Tags
+      fee:
+        paths:
+          Amount: Fee
+          Date: Date
+          Ref Number: Batch Id
+          External Id: Trans Id
+        constants:
+          Payee: Intuit Transactions
+          Expense Account: Bank Fees
+          Checking Account: Wells Fargo - Main 1582
+        fields:
+        - Payee
+        - Date
+        - Amount
+        - Expense Account
+        - Checking Account
+        - Ref Number
+        - External ID
+        - Class
+        - Tags
+    """)
+
+    digit_re = re.compile(r"[\d.]+")
+
+    def gen_qbmarketplace_imports(self, rows, tag=None):
+
+        collector = {'sale': [], 'fee': []}
+
+        if not tag:
+            tag = "qb_marketplace_" + arrow.utcnow().format("YYYYMMDD")
+
+        # filter out empty rows
+        for row in rows:
+
+            if 'Amount' not in row:
+                continue
+
+            for k in ['Amount', 'Fee']:
+                m = self.digit_re.search(row[k])
+                row[k] = float(m.group())
+
+            row['Date'] = row['Date'].split()[0]
+            row.setdefault("Cardholder Name", "unknown")
+
+            si_map = self.qb_import_map['sale']
+            item = self._extract_path_map(row, si_map["paths"])
+            item.update(si_map["constants"])
+            collector['sale'].append(item)
+
+            si_map = self.qb_import_map['fee']
+            item = self._extract_path_map(row, si_map["paths"])
+            item.update(si_map["constants"])
+            collector['fee'].append(item)
+
+        for k in collector:
+            fname = f"qbmarketplace_{k}_{tag}.csv"
+            LOG.info(f"writing {len(collector[k])} {k} to {fname}")
+            fields = self.qb_import_map[k]['fields']
+            with open(fname, "w") as f:
+                writer = csv.DictWriter(f, fieldnames=fields)
+                writer.writeheader()
+                [writer.writerow(r) for r in collector[k]]
+
+        # return collector
+

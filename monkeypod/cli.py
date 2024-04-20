@@ -167,6 +167,21 @@ def import_stripe_transactions(
         )
 
 
+@transaction.command(name="import-qbmp-transactions")
+@click.option("-f", "--csv-filename", type=click.File(), required=True)
+# click.option("-c", "--confirm-entities", is_flag=True)
+@click.pass_context
+def import_qbmp_transactions(
+    ctx, csv_filename,
+    # confirm_entities,
+):
+
+    rows = _ingest_csv_file(csv_filename)
+    mgr = ctx.parent.parent.manager
+    result = mgr.gen_qbmarketplace_imports(rows)
+    click.echo(yaml.safe_dump(result))
+
+
 @monkeypod.group(name="stripe")
 @click.pass_context
 def stripe(ctx):
