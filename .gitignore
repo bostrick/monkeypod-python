@@ -1,4 +1,7 @@
 hide
+credentials.json
+secrets
+
 
 # Backup files
 *.~

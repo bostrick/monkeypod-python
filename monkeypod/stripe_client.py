@@ -57,9 +57,11 @@ class StripeClient:
                 py_.set(data, k, self._from_timestamp(value))
 
         # dodgy check for email
-        last_token = data.get("description", "").split()[-1]
-        if "@" in last_token:
-            data.setdefault('email', last_token)
+        desc = data.get("description")
+        if desc:
+            last_token = desc.split()[-1]
+            if "@" in last_token:
+                data.setdefault('email', last_token)
 
         return data
 

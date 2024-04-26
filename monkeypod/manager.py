@@ -23,6 +23,7 @@ import logging
 import collections
 import csv
 import re
+import os
 from pathlib import Path
 from functools import cached_property
 
@@ -111,8 +112,11 @@ class MonkeyPodManager:
             entity['roles'] = list(roles)
 
             LOG.info(f"creating entity {email} {name}")
-            _ = self.client.entity_create(entity)
-            nadded += 1
+            LOG.info(os.linesep+yaml.safe_dump(entity))
+            yesno = input("import entity? (y/N)").strip().lower()
+            if yesno and yesno[0] == 'y':
+                _ = self.client.entity_create(entity)
+                nadded += 1
 
         return nadded
 
@@ -123,8 +127,8 @@ class MonkeyPodManager:
         country: billing_details.address.country
         state: billing_details.address.state
         postal_code: billing_details.address.postal_code
-        address1: billing_details.address.line1
-        address2: billing_details.address.line2
+        address: billing_details.address.line1
+        # address2: billing_details.address.line2
     """)
 
     def _confirm_stripe_entity(
@@ -344,8 +348,10 @@ class MonkeyPodManager:
         dst = self._generate_base("sale", record)
         dst["Customer"] = self._get_entity_identifier(record)
         if 'Charge for' in record['description']:
-            dst["Item"] = "Community Class"
-            dst["Class"] = "Community Classes"
+            #dst["Item"] = "Community Class"
+            #dst["Class"] = "Community Classes"
+            dst["Item"] = "Home School"
+            dst["Class"] = "Home School"
         elif 'Invoice' in record['description']:
             dst["Memo"] = record["description"]
             dst["Item"] = "Home School"

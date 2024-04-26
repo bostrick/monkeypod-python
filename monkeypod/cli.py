@@ -148,9 +148,10 @@ def transaction(ctx):
 @click.option("-f", "--csv-filename", type=click.File())
 @click.option("-y", "--yaml-filename", type=click.File())
 @click.option("-c", "--confirm-entities", is_flag=True)
+@click.option("-t", "--tag")
 @click.pass_context
 def import_stripe_transactions(
-    ctx, csv_filename, yaml_filename, confirm_entities
+    ctx, csv_filename, yaml_filename, confirm_entities, tag
 ):
 
     if csv_filename:
@@ -163,7 +164,9 @@ def import_stripe_transactions(
         recs = yaml.safe_load_all(yaml_filename.read())
         mgr = ctx.parent.parent.manager
         result = mgr.gen_stripe_imports_from_recs(
-            recs, confirm_entities=confirm_entities,
+            recs,
+            confirm_entities=confirm_entities,
+            tag=tag,
         )
 
 
@@ -180,6 +183,10 @@ def import_qbmp_transactions(
     mgr = ctx.parent.parent.manager
     result = mgr.gen_qbmarketplace_imports(rows)
     click.echo(yaml.safe_dump(result))
+
+#################################################################
+# stripe interactions
+#################################################################
 
 
 @monkeypod.group(name="stripe")

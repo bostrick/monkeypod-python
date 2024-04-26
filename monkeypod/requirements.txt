@@ -1,0 +1,13 @@
+google-api-python-client
+oauth2client
+google-auth-httplib2
+google-auth-oauthlib
+gspread
+requests
+click
+pyyaml
+attrs
+pydash
+arrow
+stripe
+python-datemath
