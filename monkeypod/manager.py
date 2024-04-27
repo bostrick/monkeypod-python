@@ -276,13 +276,17 @@ class MonkeyPodManager:
 
         data = dict(collector)
         data["fee"] = self._reduce_fees(fee_collector)
-        self.write_csvs(data, tag)
-        return data
+
+        # reshape data map to include data and fields
+        _sim = self.stripe_import_map
+        return {
+            k: {'rows': rows, 'fields': _sim[k]['fields']}
+            for k, rows in data.items()
+        }
 
     def write_csvs(self, data, tag):
 
         def _write_csv(what, tag, fields, records):
-
             fname = f"stripe_{what}_{tag}.csv"
             LOG.info(f"writing {len(records)} {what} to {fname}")
             with open(fname, "w") as f:
@@ -292,8 +296,7 @@ class MonkeyPodManager:
 
         for k in data:
             if k in self.stripe_import_map:
-                si_map = self.stripe_import_map[k]
-                _write_csv(k, tag, si_map['fields'], data[k])
+                _write_csv(k, tag, data[k]['fields'], data[k]['rows'])
 
     def _stripe_generate_import_row(self, record):
 
