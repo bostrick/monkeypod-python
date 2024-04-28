@@ -44,14 +44,15 @@ def run():
 
     # get iterator to stripe transactions
     sc = StripeClient()
-    # when = "now-1M/M:now-1M/M"
-    when = "now-1w/w:now-1w/w"
+    when = "now-1M/M:now-1M/M"
     itr = sc.balance_transaction_iter(when)
 
     # extract monkeypod import data
     client = MonkeyPodClient()
     mgr = MonkeyPodManager(client)
-    data = mgr.gen_stripe_imports_from_recs(itr, tag)
+    data = mgr.gen_stripe_imports_from_recs(
+        itr, confirm_entities=True, tag=tag,
+    )
 
     # create the stripe import google sheet
     root_folder = get_root_folder()
@@ -80,6 +81,15 @@ def run():
 @functions_framework.http
 def my_http_function(request):
     return run()
+
+
+@functions_framework.cloud_event
+def handle_event(cloud_event):
+    result = run()
+    LOG.info("cloudevent details")
+    LOG.info(cloud_event)
+    LOG.info(cloud_event.__dict__)
+    return result
 
 
 if __name__ == '__main__':
